@@ -1,0 +1,9 @@
+galaxy_info:
+  author: Sweeti Bharti
+  description: Ansible Role for deploying Spinnaker via Halyard on GCE
+  license: MIT
+  min_ansible_version: 2.4.2
+  platforms:
+    - name: Ubuntu
+      versions:
+        - trusty
