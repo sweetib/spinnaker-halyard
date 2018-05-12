@@ -1,0 +1,158 @@
+---
+- name: Download the service account file for spinnaker account
+  command: |
+    gsutil cp gs://spinnaker-halyard/{{ spinnaker_service_account_filename }}.kms /tmp
+  tags: spinnaker-halyard
+
+- name: Create credentials directory
+  file:
+    path: /opt/credentials/
+    state: directory
+  tags: spinnaker-halyard
+
+- name: Decrypt the Service Account JSON
+  command: >
+    gcloud kms decrypt --ciphertext-file /tmp/{{ spinnaker_service_account_filename }}.kms
+    --plaintext-file /opt/credentials/{{ spinnaker_service_account_filename }}.json
+    --location global
+    --keyring spinnaker-halyard
+    --key spinnaker
+  tags: spinnaker-halyard
+
+- name: Set the Persistant Storage for Halyard
+  shell: hal config storage gcs edit --project {{ spinnaker_project_id }} --bucket-location {{ spinnaker_gcs_bucket_location }} --bucket {{ spinnaker_gcs_bucket_name }} --json-path /opt/credentials/{{ spinnaker_service_account_filename }}.json && hal config storage edit --type gcs
+  tags: spinnaker-halyard
+
+- name: Configure Primary Cloud provider account
+  command: hal config provider google account add {{ spinnaker_project_id }} --project {{ spinnaker_project_id }} --json-path /opt/credentials/{{ spinnaker_service_account_filename }}.json
+  tags: spinnaker-halyard
+
+- name: Enable Google as Provider
+  command: hal config provider google enable
+  tags: spinnaker-halyard
+
+- name: Set timezone to UTC
+  command: hal config edit --timezone UTC
+  tags: spinnaker-halyard
+
+- name: Perform Halyard Deploy to install and configure services
+  shell: hal deploy apply
+  tags: spinnaker-halyard
+
+- name: Expose Spinnaker gate and deck services externally
+  shell: "echo \"host: 0.0.0.0\" | tee gate.yml deck.yml"
+  args:
+    chdir: /home/{{ hal_user }}/.hal/default/service-settings
+  tags: spinnaker-halyard
+
+- name: Configure Deck FQDN
+  shell: hal config security ui edit --override-base-url {{ spinnaker_deck_url }}
+  tags: spinnaker-halyard
+
+- name: Configure Gate/API FQDN
+  shell: hal config security api edit --override-base-url {{ spinnaker_api_url }}
+  tags: spinnaker-halyard
+
+- name: Configure Authentication via Google OAuth
+  shell: hal config security authn oauth2 edit --client-id {{ spinnaker_outh_client_id }} --client-secret {{ spinnaker_oauth_client_secret }} --provider {{ spinnaker_oauth_provider }}
+  tags: spinnaker-halyard
+
+- name: Configure Gate redirect URL for OAuth
+  shell: hal config security authn oauth2 edit --pre-established-redirect-uri {{ spinnaker_api_url }}/login
+  tags: spinnaker-halyard
+
+- name: Enable Google OAuth
+  shell: hal config security authn oauth2 enable
+  tags: spinnaker-halyard
+
+- name: Configure Authorisation via Fiat
+  shell: hal config security authz google edit --admin-username {{ spinnaker_gsuite_admin_username }} --credential-path /opt/credentials/{{ spinnaker_service_account_filename }}.json  --domain {{ spinnaker_gsuite_domain }}
+  tags: spinnaker-halyard
+
+- name: Configure Spinnaker to set Authorisation
+  shell: hal config security authz edit --type google
+  tags: spinnaker-halyard
+
+- name: Enable Authorisation
+  shell: hal config security authz enable
+  tags: spinnaker-halyard
+
+- name: Integrate with Slack
+  shell: echo {{ spinnaker_slack_token }} | hal config notification slack edit --bot-name {{ spinnaker_slack_bot_name }} --token
+  no_log: True
+  tags: spinnaker-halyard
+
+- name: Enable Slack
+  shell: hal config notification slack enable
+  tags: spinnaker-halyard
+
+- name: Enable Jekins
+  shell: hal config ci jenkins enable
+  tags: spinnaker-halyard
+
+- name: Add Jenkins Master
+  shell: echo {{ jenkins_user_password }} | hal config ci jenkins master add {{ jenkins_master_name }} --address {{ jenkins_base_url }} --username {{ jenkins_username }} --password
+  tags: spinnaker-halyard
+
+- name: Perform Halyard Deploy to install and configure services
+  shell: hal deploy apply
+  tags: spinnaker-halyard
+
+- name: Enable apache2 proxy modules
+  shell: a2enmod proxy*
+  tags: spinnaker-halyard
+
+- name: Copy apache2 spinnaker config
+  template: src=spinnaker.conf.j2 dest=/etc/apache2/sites-available/spinnaker.conf
+  tags: spinnaker-halyard
+
+- name: Configure Gate URL in Deck
+  replace:
+    path: /opt/deck/html/settings.js
+    regexp: "{{ spinnaker_api_url }}"
+    replace: "{{ spinnaker_api_url }}/gate"
+    backup: yes
+  tags: spinnaker-halyard
+
+- name: Restart apache2
+  service:
+    name: apache2
+    state: restarted
+    enabled: yes
+  tags: spinnaker-halyard
+
+- name: Reload the config
+  systemd: daemon_reload=yes
+  tags: spinnaker-halyard
+
+- name: Restart spinnaker
+  service:
+    name: spinnaker
+    state: restarted
+    enabled: yes
+  tags: spinnaker-halyard
+
+- name: Wait 300 seconds for port 8080 and 7003 to become open on the host, don't start checking for 10 seconds
+  wait_for:
+    port: '{{ item }}'
+    delay: 10
+  with_items:
+    - 8080
+    - 7003
+  tags: spinnaker-halyard
+
+- name: Create Front50 Service Account
+  uri:
+    url: http://localhost:8080/serviceAccounts
+    method: POST
+    body: '{ "name": "{{ front50_service_account_name }}", "memberOf": {{ front50_service_account_member }} }'
+    status_code: 200
+    body_format: json
+  tags: spinnaker-halyard, spinnaker-service-account
+
+- name: Sync Front50 Service Account with Fiat Authorization
+  uri:
+    url: http://localhost:7003/roles/sync
+    method: POST
+    status_code: 200
+  tags: spinnaker-halyard

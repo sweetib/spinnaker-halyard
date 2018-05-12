@@ -1,0 +1,23 @@
+- name: Create Halyard user
+  user:
+    name: "{{ hal_user }}"
+    comment: "User for Halyard configuration and installation management"
+  tags: spinnaker-halyard, clouddriver-halyard
+
+- name: Get Halyard Installation Script
+  get_url:
+     url: "{{ spinnaker_halyard_installation_script_url }}"
+     dest: /tmp/InstallHalyard.sh
+     mode: 0755
+  register: halyard_script
+  tags: spinnaker-halyard, clouddriver-halyard
+
+- name: Install Halyard
+  shell: /tmp/InstallHalyard.sh --user {{ hal_user }}
+  tags: spinnaker-halyard, clouddriver-halyard
+
+- name: Set Halyard version to be used
+  shell: hal config version edit --version {{ hal_version }}
+  tags: spinnaker-halyard, clouddriver-halyard
+
+- include: spinnaker-halyard.yml
