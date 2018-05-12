@@ -1,0 +1,26 @@
+---
+spinnaker_halyard_installation_script_url: "https://raw.githubusercontent.com/spinnaker/halyard/master/install/debian/InstallHalyard.sh"
+hal_user: halyard
+hal_version: "1.7.2"
+spinnaker_project_id: "gcp-project-name"
+spinnaker_deck_url: "https://spinnaker.testspinnaker.com"
+spinnaker_api_url: "https://spinnaker.testspinnaker.com"
+front50_service_account_name: "spinnaker-test"
+#Group name in gsuite. if defined more than one,
+#user who can list this spinnaker service account must belong to all groups defined
+front50_service_account_member: '["spinnaker"]'
+spinnaker_oauth_client_id: "oauth_client_id"
+spinnaker_oauth_client_secret: "oauth_client_secret"
+spinnaker_oauth_provider: "google"
+spinnaker_gsuite_admin_username: "admin@testspinnaker.com"
+spinnaker_gsuite_domain: "testspinnaker.com"
+spinnaker_slack_bot_name: "slackbot"
+spinnaker_slack_token: "xxxxxxxxxxxxxxxxx"
+jenkins_master_name: "jenkins"
+jenkins_base_url: "http://jenkins-url"
+jenkins_username: "jenkins_user"
+jenkins_user_password: "jenkins_token"
+
+spinnaker_gcs_bucket_location: "asia-east1"
+spinnaker_gcs_bucket_name: "spinnaker-halyard"
+spinnaker_service_account_filename: "spinnaker-halyard"
