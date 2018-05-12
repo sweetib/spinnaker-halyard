@@ -1,0 +1,23 @@
+<VirtualHost 0.0.0.0:9000>
+  <IfModule ssl_module>
+    SSLEngine on
+    SSLCertificateFile ""
+    SSLCertificateKeyFile ""
+  </IfModule>
+  DocumentRoot /opt/deck/html
+  ServerName "{{ spinnaker_api_url }}:443"
+  UseCanonicalName On
+
+  ProxyPass "/gate" "http://localhost:8084" retry=0
+  ProxyPassReverse "/gate" "http://localhost:8084"
+
+  ProxyPass "/rosco" "http://localhost:8087" retry=0
+  ProxyPassReverse "/rosco" "http://localhost:8087"
+
+  ProxyPass "/auth/redirect" "http://localhost:8084/auth/redirect" retry=0
+  ProxyPass "/login" "http://localhost:8084/login" retry=0
+  ProxyPassReverse "/login" "http://localhost:8084/login"
+  <Directory "/opt/deck/html/">
+     Require all granted
+  </Directory>
+</VirtualHost>
