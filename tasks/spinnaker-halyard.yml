@@ -54,7 +54,7 @@
   tags: spinnaker-halyard
 
 - name: Configure Authentication via Google OAuth
-  shell: hal config security authn oauth2 edit --client-id {{ spinnaker_outh_client_id }} --client-secret {{ spinnaker_oauth_client_secret }} --provider {{ spinnaker_oauth_provider }}
+  shell: hal config security authn oauth2 edit --client-id {{ spinnaker_oauth_client_id }} --client-secret {{ spinnaker_oauth_client_secret }} --provider {{ spinnaker_oauth_provider }}
   tags: spinnaker-halyard
 
 - name: Configure Gate redirect URL for OAuth
